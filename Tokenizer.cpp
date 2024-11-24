@@ -1,11 +1,55 @@
-﻿#include <iostream>
+#include <iostream>
 #include <format>
 #include <map>
 #include <string>
-#include "tokenizer.h"
+#include <vector>
+#include <cctype>
+#include <stdexcept>
 
-void tokenize(const std::string& expr, std::vector<Token>& tokens)
-{
+enum State { S0, S1, S2, S3, S4, S5 };
+
+class Token {
+public:
+    enum Type {
+        INT_LITERAL,
+        FLOAT_LITERAL,
+        FUNCTION,
+        OPERATOR,
+        LEFT_PARANTHESIS,
+        RIGHT_PARANTHESIS,
+        SEPARATOR
+    };
+
+    Token(const std::string& value, Type type, Type direction = LEFT_PARANTHESIS)
+        : value(value), type(type), direction(direction) {}
+
+    Type getType() const { return type; }
+    const std::string& getValue() const { return value; }
+
+private:
+    std::string value;
+    Type type;
+    Type direction;
+};
+
+void tokenizeOpParanthSep(bool isOp, bool isParanth, bool isRParanth, bool isSep, std::vector<Token>& tokens) {
+    if (isOp) {
+        if (tokens.empty() || tokens.back().getType() == Token::LEFT_PARANTHESIS) {
+            tokens.push_back({ std::string(1, (isOp ? '+' : '-')), Token::OPERATOR, Token::RIGHT_PARANTHESIS });
+        }
+        else {
+            tokens.push_back({ std::string(1, (isOp ? '+' : '-')), Token::OPERATOR, Token::LEFT_PARANTHESIS });
+        }
+    }
+    else if (isParanth) {
+        tokens.push_back({ std::string(1, (isRParanth ? ')' : '(')), isRParanth ? Token::RIGHT_PARANTHESIS : Token::LEFT_PARANTHESIS });
+    }
+    else if (isSep) {
+        tokens.push_back({ std::string(1, ','), Token::SEPARATOR });
+    }
+}
+
+void tokenize(const std::string& expr, std::vector<Token>& tokens) {
     State state = S0;
 
     std::string validOperators = "+-*^/";
@@ -15,8 +59,7 @@ void tokenize(const std::string& expr, std::vector<Token>& tokens)
     std::string buffer;
     Token::Type bufferTokenType = Token::INT_LITERAL;
 
-    for (auto& s : expr)
-    {
+    for (auto& s : expr) {
         isDigit = std::isdigit(s);
         isLetter = std::isalpha(s);
         isLParanth = s == '(';
@@ -29,9 +72,7 @@ void tokenize(const std::string& expr, std::vector<Token>& tokens)
         if (!(isDigit || isLetter || isParanth || isPoint || isSep || isOp))
             throw std::invalid_argument(std::format("Unknown symbol: {}", s));
 
-        // Ñìåíà ñîñòîÿíèÿ
-        switch (state)
-        {
+        switch (state) {
         case S0:
             if (isOp || isParanth)
                 state = S1;
@@ -87,29 +128,9 @@ void tokenize(const std::string& expr, std::vector<Token>& tokens)
             break;
         }
 
-        auto tokenize_Op_Paranth_Sep = [&]()
-            {
-                if (isOp)
-                {
-                    if (tokens.size() == 0 || tokens[tokens.size() - 1].getType() == Token::L_PARANTHESIS)
-                        tokens.push_back({ std::string{s}, Token::OPERATOR, Token::RIGHT });
-                    else
-                        tokens.push_back({ std::string{s}, Token::OPERATOR, Token::LEFT });
-                }
-                else if (isParanth)
-                {
-                    tokens.push_back({ std::string{s}, isRParanth ? Token::R_PARANTHESIS : Token::L_PARANTHESIS });
-                }
-                else if (isSep)
-                {
-                    tokens.push_back({ std::string{s}, Token::SEPARATOR });
-                }
-            };
-
-        switch (state)
-        {
+        switch (state) {
         case S1:
-            tokenize_Op_Paranth_Sep();
+            tokenizeOpParanthSep(isOp, isParanth, isRParanth, isSep, tokens);
             break;
         case S2: case S3: case S4:
             buffer.push_back(s);
@@ -117,7 +138,7 @@ void tokenize(const std::string& expr, std::vector<Token>& tokens)
         case S5:
             tokens.push_back({ buffer, bufferTokenType });
             buffer.clear();
-            tokenize_Op_Paranth_Sep();
+            tokenizeOpParanthSep(isOp, isParanth, isRParanth, isSep, tokens);
             break;
         }
     }
