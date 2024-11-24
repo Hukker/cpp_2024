@@ -4,29 +4,29 @@
 class Token
 {
 public:
-    // Тип
+    // type
     enum Type
     {
-        OPERATOR,      // унарный/бинарный оператор
-        L_PARANTHESIS, // открывающая скобка
-        R_PARANTHESIS, // закрывающая скобка
-        INT_LITERAL,   // целое число
-        FLOAT_LITERAL, // число с плавающей точкой 
-        FUNCTION,      // функция
-        SEPARATOR      // разделитель аргументов функции
+        OPERATOR,      // un/bin operation
+        L_PARANTHESIS, // opened bracked
+        R_PARANTHESIS, // closed bracked
+        INT_LITERAL,   // integer number
+        FLOAT_LITERAL, // float literal 
+        FUNCTION,      // function
+        SEPARATOR      // separate args
     };
 
-    // Ассоциативность
+    // РђСЃСЃРѕС†РёР°С‚РёРІРЅРѕСЃС‚СЊ
     enum OperatorAssociativity
     {
-        NONE,  // токен - не оператор
-        RIGHT, // правоассоциативный
-        LEFT   // левоассоциативный
+        NONE,  // not an operator
+        RIGHT, // rightassociated
+        LEFT   // leftassociated
     };
 
     Token(std::string token, Type type, OperatorAssociativity asc = NONE);
 
-    // Приоритет
+    // priority
     int getPrecendance() const;
 
     const Type& getType() const { return type; }
