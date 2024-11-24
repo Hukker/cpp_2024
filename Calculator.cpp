@@ -1,6 +1,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <algorithm>
+#include <stack>
 #include "calculator.h"
 
 Calculator::Calculator(Loader& loader) : loader(loader) {}
@@ -16,6 +17,7 @@ std::string Calculator::skim_expression(const std::string& expression) {
 double Calculator::process_function(const std::string& funcName, double arg) {
     return loader.method_function(funcName, arg);
 }
+
 double Calculator::process_function(const std::string& funcName, double arg1, double arg2) {
     return loader.method_function(funcName, arg1, arg2);
 }
@@ -23,10 +25,8 @@ double Calculator::process_function(const std::string& funcName, double arg1, do
 void Calculator::shunting_yard(const std::vector<Token>& expr, std::vector<Token>& outQueue) {
     std::stack<Token> stack;
     auto fromStackToQueue = [&]() { outQueue.push_back(stack.top()); stack.pop(); };
-    for (const auto& token : expr)
-    {
-        switch (token.getType())
-        {
+    for (const auto& token : expr) {
+        switch (token.getType()) {
         case Token::INT_LITERAL:
         case Token::FLOAT_LITERAL:
             outQueue.push_back(token);
@@ -36,11 +36,9 @@ void Calculator::shunting_yard(const std::vector<Token>& expr, std::vector<Token
             stack.push(token);
             break;
         case Token::OPERATOR:
-            if (!stack.empty())
-            {
+            if (!stack.empty()) {
                 while (stack.top().getType() == Token::OPERATOR && ((stack.top().getPrecendance() > token.getPrecendance())
-                    || (stack.top().getPrecendance() == token.getPrecendance() && token.getAsc() == Token::LEFT)))
-                {
+                    || (stack.top().getPrecendance() == token.getPrecendance() && token.getAsc() == Token::LEFT))) {
                     fromStackToQueue();
                     if (stack.empty())
                         break;
@@ -48,37 +46,32 @@ void Calculator::shunting_yard(const std::vector<Token>& expr, std::vector<Token
             }
             stack.push(token);
             break;
-
         case Token::R_PARANTHESIS:
             if (stack.empty())
-                throw std::invalid_argument("Non-balanced on paranthesis expression!");
-            while (stack.top().getType() != Token::L_PARANTHESIS)
-            {
+                throw std::invalid_argument("Non-balanced parenthesis expression!");
+            while (stack.top().getType() != Token::L_PARANTHESIS) {
                 fromStackToQueue();
                 if (stack.empty())
-                    throw std::invalid_argument("Non-balanced on paranthesis expression!");
+                    throw std::invalid_argument("Non-balanced parenthesis expression!");
             }
             stack.pop();
             if (!stack.empty() && stack.top().getType() == Token::FUNCTION)
                 fromStackToQueue();
             break;
-
         case Token::SEPARATOR:
             if (stack.empty())
-                throw std::invalid_argument("Paranthesis or separator missed!");
-            while (stack.top().getType() != Token::L_PARANTHESIS)
-            {
+                throw std::invalid_argument("Parenthesis or separator missing!");
+            while (stack.top().getType() != Token::L_PARANTHESIS) {
                 fromStackToQueue();
                 if (stack.empty())
-                    throw std::invalid_argument("Paranthesis-unbalanced expression!");
+                    throw std::invalid_argument("Parenthesis-unbalanced expression!");
             }
             break;
         }
     }
-    while (!stack.empty())
-    {
+    while (!stack.empty()) {
         if (stack.top().getType() == Token::L_PARANTHESIS)
-            throw std::invalid_argument("Paranthesis-unbalanced expression!");
+            throw std::invalid_argument("Parenthesis-unbalanced expression!");
         else
             fromStackToQueue();
     }
@@ -86,47 +79,37 @@ void Calculator::shunting_yard(const std::vector<Token>& expr, std::vector<Token
 
 double Calculator::process_expression(std::vector<Token>& rpn_expr) {
     std::stack<double> stack;
-    auto getOneToken = [&]()
-        {
-            if (stack.empty()) throw std::invalid_argument("Not enough arguments in function!");
-            double x = stack.top();
-            stack.pop();
-            return x;
-        };
-    auto getTwoTokens = [&]()
-        {
-            double x = getOneToken(), y = getOneToken();
-            return std::tuple{ y,x };
-        };
-    auto checkedDivision = [&](double a, double b)
-        {
-            if (b == 0.f) throw std::invalid_argument("Division by zero");
-            return a / b;
-        };
 
-    double res;
-    for (auto& token : rpn_expr)
-    {
+    auto getOneToken = [&]() {
+        if (stack.empty()) throw std::invalid_argument("Not enough arguments in function!");
+        double x = stack.top();
+        stack.pop();
+        return x;
+    };
+
+    auto getTwoTokens = [&]() {
+        double x = getOneToken(), y = getOneToken();
+        return std::tuple{ y, x };
+    };
+
+    auto checkedDivision = [&](double a, double b) {
+        if (b == 0.f) throw std::invalid_argument("Division by zero");
+        return a / b;
+    };
+
+    auto process_token = [&](const Token& token) {
         const std::string& str = token.getStr();
+        double res;
 
-        switch (token.getType())
-        {
-
+        switch (token.getType()) {
         case Token::INT_LITERAL:
-            stack.push(std::stof(str));
-            break;
-
         case Token::FLOAT_LITERAL:
-            stack.push(std::stof(str));
+            stack.push(std::stof(str)); 
             break;
 
         case Token::OPERATOR:
-
-            switch (token.getAsc())
-            {
-
-            case Token::LEFT:
-            {
+            switch (token.getAsc()) {
+            case Token::LEFT: {
                 auto [a, b] = getTwoTokens();
                 if (str == "+") res = a + b;
                 else if (str == "-") res = a - b;
@@ -137,8 +120,7 @@ double Calculator::process_expression(std::vector<Token>& rpn_expr) {
                 break;
             }
 
-            case Token::RIGHT:
-            {
+            case Token::RIGHT: {
                 auto a = getOneToken();
                 if (str == "-") {
                     res = -a;
@@ -152,24 +134,27 @@ double Calculator::process_expression(std::vector<Token>& rpn_expr) {
                 break;
             }
 
-            case Token::NONE: {
+            case Token::NONE:
                 throw std::invalid_argument("Operator must have associativity!");
                 break;
             }
-            }
             stack.push(res);
             break;
+
         case Token::FUNCTION:
             auto a = getOneToken();
             res = process_function(token.getStr(), a);
             stack.push(res);
-
             break;
         }
+    };
+
+    for (auto& token : rpn_expr) {
+        process_token(token); 
     }
+
     return stack.top();
 }
-
 
 void Calculator::evaluate_expression(const std::string& expression) {
     std::string skimmed_expr = skim_expression(expression);
