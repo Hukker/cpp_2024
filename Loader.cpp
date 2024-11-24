@@ -3,14 +3,12 @@
 namespace fs = std::filesystem;
 
 Loader::Loader(const std::string& directory) {
- //   std::cout << "fuck" << std::endl;
     try {
         for (const auto& entry : fs::directory_iterator(directory)) {
 
             if (entry.path().extension() == ".dll" && entry.path().stem().string().find("dynamic_") == 0) {
                 HMODULE hModule = LoadLibraryA(entry.path().string().c_str());
 
-                //std::cout << "fuck" << std::endl;
 
                 if (!hModule) {
                     throw std::runtime_error("Failed to load DLL: " + entry.path().string());
