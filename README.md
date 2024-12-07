@@ -1,6 +1,4 @@
-### Homeworks of Cpp ###
 Krekhov Danil 5030102/20201
-
 Engine
 Имея класс Subject и его инстанс subj, завернуть со списком аргументов метод f3 класса Subject для последующего вызова, передавая неограниченный словарь аргументов в виде:
 Wrapper wrapper(&subj, &Subject::f3, {{"arg1", 0}, {"arg2", 0}});
