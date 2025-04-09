@@ -1,1 +1,1 @@
-danil krekhov 5030102_20201
+An engineering calculator and text editor
